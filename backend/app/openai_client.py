@@ -145,13 +145,16 @@ class OpenAITrialService:
     async def create_trial(self, payload: TrialRequest) -> TrialResponse:
         client = self._client()
         try:
-            response = await client.responses.create(
-                model=self.settings.openai_model,
-                reasoning={"effort": self.settings.openai_reasoning_effort},
-                instructions=SYSTEM_PROMPT,
-                input=build_trial_input(payload),
-                text=response_text_format(),
-            )
+            kwargs = {
+                "model": self.settings.openai_model,
+                "instructions": SYSTEM_PROMPT,
+                "input": build_trial_input(payload),
+                "text": response_text_format(),
+            }
+            if self.settings.openai_reasoning_effort:
+                kwargs["reasoning"] = {"effort": self.settings.openai_reasoning_effort}
+
+            response = await client.responses.create(**kwargs)
         except APITimeoutError as exc:
             raise UpstreamTimeoutError() from exc
         except AuthenticationError as exc:
@@ -173,14 +176,17 @@ class OpenAITrialService:
         yield {"event": "status", "data": {"status": "started"}}
 
         try:
-            stream = await client.responses.create(
-                model=self.settings.openai_model,
-                reasoning={"effort": self.settings.openai_reasoning_effort},
-                instructions=SYSTEM_PROMPT,
-                input=build_trial_input(payload),
-                text=response_text_format(),
-                stream=True,
-            )
+            kwargs = {
+                "model": self.settings.openai_model,
+                "instructions": SYSTEM_PROMPT,
+                "input": build_trial_input(payload),
+                "text": response_text_format(),
+                "stream": True,
+            }
+            if self.settings.openai_reasoning_effort:
+                kwargs["reasoning"] = {"effort": self.settings.openai_reasoning_effort}
+
+            stream = await client.responses.create(**kwargs)
 
             async for event in stream:
                 event_type = getattr(event, "type", "")
