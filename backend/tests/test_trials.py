@@ -206,9 +206,9 @@ async def test_openai_service_sends_json_schema_and_parses_result() -> None:
     assert result.review_scores.original.clarity == 6
     call = fake_client.responses.calls[0]
     assert call["model"] == "gpt-test"
-    assert call["text"]["format"]["type"] == "json_schema"
-    assert call["text"]["format"]["strict"] is True
-    assert call["text"]["format"]["schema"] == trial_response_json_schema()
+    assert call["text"]["format"]["type"] == "json_object"
+    assert "strict" not in call["text"]["format"]
+    assert "schema" not in call["text"]["format"]
 
 
 async def test_openai_service_maps_timeout() -> None:

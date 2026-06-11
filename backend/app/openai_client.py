@@ -78,10 +78,7 @@ def trial_response_json_schema() -> dict[str, Any]:
 def response_text_format() -> dict[str, Any]:
     return {
         "format": {
-            "type": "json_schema",
-            "name": "copycourt_trial",
-            "strict": True,
-            "schema": trial_response_json_schema(),
+            "type": "json_object"
         }
     }
 
