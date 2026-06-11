@@ -38,6 +38,14 @@ function App() {
     startedAt: null,
   });
   const abortRef = useRef<AbortController | null>(null);
+  const [isGavelStriking, setIsGavelStriking] = useState(false);
+
+  function triggerGavelStrike() {
+    setIsGavelStriking(true);
+    setTimeout(() => {
+      setIsGavelStriking(false);
+    }, 450);
+  }
 
   const originalLength = form.original_text.trim().length;
   const canSubmit = originalLength >= 20 && originalLength <= 3000 && !isLoading;
@@ -46,11 +54,15 @@ function App() {
   const hasAnalysisSurface = isLoading || Boolean(result);
   const isInputCollapsed = hasAnalysisSurface && !isInputExpanded;
   const workspaceClassName = [
-    'holo-workspace',
-    hasAnalysisSurface ? 'holo-has-results' : 'holo-intake',
+    'court-workspace',
+    hasAnalysisSurface ? 'court-has-results' : 'court-intake',
   ]
     .filter(Boolean)
     .join(' ');
+
+  function handleAbort() {
+    abortRef.current?.abort();
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +82,7 @@ function App() {
         stageIndex: 0,
         startedAt: Date.now(),
       });
+      triggerGavelStrike();
     };
     
     await updateLayout(startTrial);
@@ -87,6 +100,7 @@ function App() {
           ? { ...current, status: 'settling', stageIndex: trialFlowStages.length - 1 }
           : current,
       );
+      triggerGavelStrike();
     } catch (caughtError) {
       if (!(caughtError instanceof DOMException && caughtError.name === 'AbortError')) {
         const message =
@@ -108,14 +122,17 @@ function App() {
   function handleStreamEvent(streamEvent: TrialStreamEvent, requestId: number) {
     if (streamEvent.type === 'delta') {
       setStreamText(streamEvent.accumulatedText);
-      setAnalysisState((current) =>
-        current.requestId === requestId
-          ? {
-              ...current,
-              stageIndex: inferStageIndex(streamEvent.accumulatedText, current.stageIndex),
-            }
-          : current,
-      );
+      setAnalysisState((current) => {
+        if (current.requestId !== requestId) return current;
+        const nextStage = inferStageIndex(streamEvent.accumulatedText, current.stageIndex);
+        if (nextStage > current.stageIndex) {
+          triggerGavelStrike();
+        }
+        return {
+          ...current,
+          stageIndex: nextStage,
+        };
+      });
     }
 
     if (streamEvent.type === 'complete') {
@@ -136,11 +153,11 @@ function App() {
   }
 
   return (
-    <main className="holo-app-shell">
-      <header className="holo-court-header">
-        <div className="holo-header-brand">
-          <LayersIcon className="holo-brand-icon" width={24} height={24} />
-          <h1>CopyCourt <span className="holo-version">OS v2.0</span></h1>
+    <main className={`court-app-shell${isGavelStriking ? ' gavel-strike-impact' : ''}`}>
+      <header className="court-header">
+        <div className="court-brand">
+          <LayersIcon className="court-brand-icon" width={24} height={24} />
+          <h1>CopyCourt</h1>
         </div>
       </header>
 
@@ -164,6 +181,7 @@ function App() {
           }}
           onFieldChange={handleFieldChange}
           onSubmit={handleSubmit}
+          onAbort={handleAbort}
           originalLength={originalLength}
         />
         {hasAnalysisSurface ? (

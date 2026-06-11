@@ -25,3 +25,9 @@ __pycache__/
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Debug and Agent Temp Files
+*.txt
+.agents/
+.impeccable/
+skills-lock.json
