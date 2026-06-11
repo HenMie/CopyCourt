@@ -1,13 +1,13 @@
 import {
-  AlertTriangle,
-  Gavel,
-  Loader2,
-  MessageSquareQuote,
-  ScrollText,
-  ShieldCheck,
-  Sparkles,
-  UsersRound,
-} from 'lucide-react';
+  ExclamationTriangleIcon,
+  UpdateIcon,
+  ChatBubbleIcon,
+  CheckCircledIcon,
+  MagicWandIcon,
+  PersonIcon,
+  LightningBoltIcon,
+  ReaderIcon
+} from '@radix-ui/react-icons';
 import { useMemo } from 'react';
 
 import {
@@ -22,7 +22,6 @@ import {
 import { buildLiveDocket } from '../lib/liveParsing';
 import type { TrialAnalysisState } from '../lib/trial';
 import type { TrialRequest, TrialResponse } from '../types';
-import { SectionFrame } from './SectionFrame';
 
 interface ResultShellProps {
   result: TrialResponse | null;
@@ -43,7 +42,7 @@ export function ResultShell({
 }: ResultShellProps) {
   if (isLoading && !result) {
     return (
-      <section className="result-shell result-shell-loading" aria-live="polite" aria-label="审判结果">
+      <section className="holo-result-shell holo-shell-loading" aria-live="polite">
         <LiveAnalysis analysisState={analysisState} streamText={streamText} />
       </section>
     );
@@ -54,128 +53,100 @@ export function ResultShell({
   }
 
   return (
-    <section className="result-shell" aria-label="审判结果">
-      <header className="result-header">
-        <div>
-          <p className="eyebrow">Verdict Record</p>
-          <h2>审判记录</h2>
-          <p className="result-subtitle">以下结果基于最近一次成功提交的案卷生成，保留本次分析与改写依据。</p>
-        </div>
-        <div className="result-meta">
-          <MetaChip label="平台" value={findOptionLabel(platformOptions, submittedForm.target_platform)} />
-          <MetaChip label="目标" value={findOptionLabel(objectiveOptions, submittedForm.objective)} />
-          <MetaChip label="强度" value={findOptionLabel(intensityOptions, submittedForm.intensity)} />
+    <section className="holo-result-shell" aria-label="分析评估结果">
+      <header className="holo-result-header">
+        <div className="holo-result-title">
+          <ReaderIcon className="holo-accent-icon" width={24} height={24} />
+          <h2>智能评估视图</h2>
+          <span className="holo-meta-tags">
+            {findOptionLabel(platformOptions, submittedForm.target_platform)} |{' '}
+            {findOptionLabel(objectiveOptions, submittedForm.objective)} |{' '}
+            {findOptionLabel(intensityOptions, submittedForm.intensity)}
+          </span>
         </div>
       </header>
 
-      {hasStaleDraft ? (
-        <div className="result-banner" role="status">
-          <AlertTriangle aria-hidden="true" size={16} />
-          <span>当前展示的是上一次提交的结果。左侧草稿已有改动，但尚未重新审判。</span>
+      {hasStaleDraft && (
+        <div className="holo-banner warning" role="status">
+          <ExclamationTriangleIcon width={16} height={16} />
+          <span>系统提示：检测到当前面板参数与展示的评估数据不一致，请点击“重新生成”以获取最新分析结果。</span>
         </div>
-      ) : null}
+      )}
 
-      {isLoading ? (
-        <div className="result-banner result-banner-loading" role="status">
-          <Loader2 aria-hidden="true" className="spin" size={16} />
-          <span>正在基于当前草稿重新合议，旧结果暂时保留展示。</span>
+      {isLoading && (
+        <div className="holo-banner loading" role="status">
+          <UpdateIcon className="spin" width={16} height={16} />
+          <span>数据流正在处理中，新的分析报告即将生成。</span>
         </div>
-      ) : null}
+      )}
 
-      {isLoading ? <LiveAnalysis compact analysisState={analysisState} streamText={streamText} /> : null}
+      {isLoading && <LiveAnalysis compact analysisState={analysisState} streamText={streamText} />}
 
-      <div className="section-grid">
-        <SectionFrame badge="案情归纳" icon={<ScrollText aria-hidden="true" size={18} />} subtitle="Case Summary" title="立案">
-          <DefinitionList
-            items={[
-              ['文案类型', result.case_summary.content_type],
-              ['主要意图', result.case_summary.main_intent],
-              ['目标读者', result.case_summary.target_reader],
-            ]}
-          />
-        </SectionFrame>
+      <div className="holo-dashboard-grid">
+        {/* 左侧：分数雷达/柱状图面板 */}
+        <div className="holo-panel holo-panel-scores">
+          <div className="holo-panel-header">
+            <ChatBubbleIcon width={18} height={18} />
+            <h3>质量提升对比</h3>
+          </div>
+          <ScoreComparison scores={result.review_scores} />
+        </div>
 
-        <SectionFrame badge="问题证据" icon={<AlertTriangle aria-hidden="true" size={18} />} subtitle="Prosecution" title="控诉">
-          <div className="charge-list">
-            {result.prosecution.map((item) => (
-              <article className="charge-card" key={`${item.charge}-${item.evidence}`}>
-                <div className="charge-copy">
+        {/* 中间：评审动态气泡 */}
+        <div className="holo-panel holo-panel-chat">
+          <div className="holo-panel-header">
+            <PersonIcon width={18} height={18} />
+            <h3>合议庭分析明细</h3>
+          </div>
+          <div className="holo-chat-flow">
+            {result.prosecution.map((item, i) => (
+              <div className="holo-chat-bubble prosecution" key={`p-${i}`}>
+                <span className="chat-avatar"><ExclamationTriangleIcon width={14} height={14}/> 缺陷诊断</span>
+                <div className="chat-content">
                   <strong>{item.charge}</strong>
                   <p>{item.evidence}</p>
                 </div>
-                <SeverityDots value={item.severity} />
-              </article>
+              </div>
+            ))}
+            {result.defense.map((item, i) => (
+              <div className="holo-chat-bubble defense" key={`d-${i}`}>
+                <span className="chat-avatar"><CheckCircledIcon width={14} height={14}/> 优势保留</span>
+                <div className="chat-content">
+                  <strong>{item.strength}</strong>
+                  <p>{item.reason}</p>
+                </div>
+              </div>
+            ))}
+            {result.jury.map((item, i) => (
+              <div className="holo-chat-bubble jury" key={`j-${i}`}>
+                <span className="chat-avatar"><PersonIcon width={14} height={14}/> 专家评审 ({item.role})</span>
+                <div className="chat-content">
+                  <strong>{item.reaction}</strong>
+                  <p>{item.suggestion}</p>
+                </div>
+              </div>
             ))}
           </div>
-        </SectionFrame>
+        </div>
 
-        <SectionFrame badge="保留项" icon={<ShieldCheck aria-hidden="true" size={18} />} subtitle="Defense" title="辩护">
-          <div className="plain-list">
-            {result.defense.map((item) => (
-              <article className="ledger-note" key={`${item.strength}-${item.reason}`}>
-                <strong>{item.strength}</strong>
-                <p>{item.reason}</p>
-              </article>
-            ))}
+        {/* 右侧：结论与重塑文案 */}
+        <div className="holo-panel holo-panel-rewrite">
+          <div className="holo-panel-header glowing">
+            <MagicWandIcon width={18} height={18} />
+            <h3>优选改写结果</h3>
           </div>
-        </SectionFrame>
-
-        <SectionFrame
-          badge={`${result.jury.length} 位`}
-          icon={<UsersRound aria-hidden="true" size={18} />}
-          subtitle="Jury"
-          title="陪审"
-        >
-          <div className="jury-grid">
-            {result.jury.map((item) => (
-              <article className="jury-card" key={item.role}>
-                <p className="jury-role">{item.role}</p>
-                <strong>{item.reaction}</strong>
-                <span>{item.suggestion}</span>
-              </article>
-            ))}
+          <div className="holo-verdict-summary">
+            <strong>改写策略:</strong> {result.verdict.rewrite_strategy}
           </div>
-        </SectionFrame>
-
-        <SectionFrame badge="结论" icon={<Gavel aria-hidden="true" size={18} />} subtitle="Verdict" title="判决">
-          <DefinitionList
-            items={[
-              ['主要问题', result.verdict.main_problem],
-              ['改写策略', result.verdict.rewrite_strategy],
-            ]}
-          />
-        </SectionFrame>
-
-        <SectionFrame
-          badge="对照阅读"
-          fullWidth
-          icon={<Sparkles aria-hidden="true" size={18} />}
-          subtitle="Rewrite"
-          title="改写前后对照"
-        >
-          <div className="rewrite-layout">
-            <article className="paper-card">
-              <p className="paper-label">原始文案</p>
-              <p className="paper-body">{submittedForm.original_text}</p>
-            </article>
-            <article className="paper-card paper-card-highlight">
-              <p className="paper-label">改写稿</p>
-              <h3>{result.rewritten_copy.title}</h3>
-              <p className="paper-body">{result.rewritten_copy.body}</p>
-              <strong className="paper-cta">{result.rewritten_copy.cta}</strong>
-            </article>
+          <div className="holo-rewritten-artifact">
+            <h4>{result.rewritten_copy.title}</h4>
+            <p className="holo-body">{result.rewritten_copy.body}</p>
+            <div className="holo-cta">
+              <LightningBoltIcon width={14} height={14}/>
+              <span>{result.rewritten_copy.cta}</span>
+            </div>
           </div>
-        </SectionFrame>
-
-        <SectionFrame
-          badge="双评分"
-          fullWidth
-          icon={<MessageSquareQuote aria-hidden="true" size={18} />}
-          subtitle="Review Scores"
-          title="复审评分提升"
-        >
-          <ScoreComparison scores={result.review_scores} />
-        </SectionFrame>
+        </div>
       </div>
     </section>
   );
@@ -196,108 +167,23 @@ function LiveAnalysis({
   const progress = ((activeStageIndex + 1) / trialFlowStages.length) * 100;
 
   return (
-    <div className={`live-analysis${compact ? ' live-analysis-compact' : ''}`} aria-live="polite">
-      <header className="live-analysis-header">
-        <div>
-          <p className="eyebrow">Hearing Live</p>
-          <h2>实时审理中</h2>
-          <p>{activeStage.detail} 已完成 {liveDocket.parsedCount} 个审理分区，结果会逐段落入下方卷宗。</p>
+    <div className={`holo-live-analysis ${compact ? 'compact' : ''}`}>
+      <div className="holo-live-header">
+        <div className="holo-live-title">
+          <UpdateIcon className="spin" width={20} height={20} />
+          <h3>深度分析进行中... [{activeStage.label}]</h3>
         </div>
-        <div className="live-status-pill">
-          <Loader2 aria-hidden="true" className="spin" size={16} />
-          <span>{activeStage.label}</span>
-        </div>
-      </header>
-
-      <div
-        className="live-progress"
-        role="progressbar"
-        aria-label="审理进度"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(progress)}
-      >
-        <i style={{ transform: `scaleX(${progress / 100})` }} />
-      </div>
-
-      <ol className="trial-flow">
-        {trialFlowStages.map((stage, index) => {
-          const parsedState = liveDocket.items[index]?.status;
-          const state =
-            parsedState === 'parsed' ? 'done' : index === activeStageIndex || parsedState === 'active' ? 'active' : 'waiting';
-          return (
-            <li className={`trial-flow-item trial-flow-${state}`} aria-current={state === 'active' ? 'step' : undefined} key={stage.key}>
-              <span>{index + 1}</span>
-              <div>
-                <strong>{stage.label}</strong>
-                <p>{stage.detail}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div className="live-docket" aria-label="实时解析卷宗">
-        <div className="live-docket-head">
-          <span>实时解析卷宗</span>
-          <strong>{liveDocket.parsedCount}/7 已成段</strong>
-        </div>
-        <div className="live-docket-grid">
-          {liveDocket.items.map((item) => (
-            <article className={`live-docket-card live-docket-${item.status}`} key={item.key}>
-              <div className="live-docket-card-head">
-                <span>{item.label}</span>
-                <strong>{item.metric ?? statusLabel(item.status)}</strong>
-              </div>
-              <p>{item.summary}</p>
-              {item.detail ? <small>{item.detail}</small> : null}
-            </article>
-          ))}
+        <div className="holo-progress-bar">
+          <i style={{ width: `${progress}%` }} />
         </div>
       </div>
-    </div>
-  );
-}
 
-function statusLabel(status: 'waiting' | 'active' | 'parsed') {
-  if (status === 'parsed') {
-    return '已完成';
-  }
-  if (status === 'active') {
-    return '审理中';
-  }
-  return '待审';
-}
-
-function MetaChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="meta-chip">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function DefinitionList({ items }: { items: Array<[string, string]> }) {
-  return (
-    <dl className="definition-list">
-      {items.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function SeverityDots({ value }: { value: number }) {
-  return (
-    <div className="severity-block" aria-label={`严重度 ${value}`}>
-      <span>严重度 {value}</span>
-      <div className="severity-dots" aria-hidden="true">
-        {Array.from({ length: 5 }, (_, index) => (
-          <i className={index < value ? 'severity-dot-active' : ''} key={index} />
+      <div className="holo-live-docket">
+        {liveDocket.items.map((item) => (
+          <div className={`holo-live-card status-${item.status}`} key={item.key}>
+            <strong>{item.label}</strong>
+            <p>{item.summary}</p>
+          </div>
         ))}
       </div>
     </div>
@@ -311,43 +197,42 @@ function ScoreComparison({ scores }: { scores: TrialResponse['review_scores'] })
   const averageDelta = revisedAverage - originalAverage;
 
   return (
-    <div className="score-comparison">
-      <div className="score-summary">
-        <article>
-          <span>原文均分</span>
-          <strong>{originalAverage.toFixed(1)}</strong>
-        </article>
-        <article>
-          <span>改写后均分</span>
-          <strong>{revisedAverage.toFixed(1)}</strong>
-        </article>
-        <article className="score-summary-highlight">
-          <span>平均提升</span>
-          <strong>{averageDelta >= 0 ? '+' : ''}{averageDelta.toFixed(1)}</strong>
-        </article>
+    <div className="holo-scores">
+      <div className="holo-scores-hero">
+        <div className="holo-score-circle original">
+          <svg viewBox="0 0 36 36" className="circular-chart">
+            <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path className="circle" strokeDasharray={`${originalAverage * 10}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <div className="score-text">
+            <span>原稿均分</span>
+            <strong>{originalAverage.toFixed(1)}</strong>
+          </div>
+        </div>
+        <div className="holo-score-circle revised">
+          <svg viewBox="0 0 36 36" className="circular-chart">
+            <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path className="circle" strokeDasharray={`${revisedAverage * 10}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <div className="score-text">
+            <span>改写均分</span>
+            <strong>{revisedAverage.toFixed(1)}</strong>
+          </div>
+        </div>
       </div>
-
-      <div className="score-table">
+      
+      <div className="holo-score-list">
         {rows.map((row) => (
-          <article className="score-row" key={row.key}>
-            <div className="score-row-heading">
-              <div>
-                <p>{row.label}</p>
-                <span>
-                  原文 {row.original} / 改写 {row.revised}
-                </span>
-              </div>
-              <strong>{row.delta >= 0 ? '+' : ''}{row.delta}</strong>
+          <div className="holo-score-row" key={row.key}>
+            <div className="row-info">
+              <span>{row.label}</span>
+              <strong className={row.delta > 0 ? 'positive' : ''}>{row.delta > 0 ? '+' : ''}{row.delta}</strong>
             </div>
-            <div className="score-tracks" aria-hidden="true">
-              <div className="score-track">
-                <i style={{ width: `${row.original * 10}%` }} />
-              </div>
-              <div className="score-track score-track-revised">
-                <i style={{ width: `${row.revised * 10}%` }} />
-              </div>
+            <div className="row-track">
+              <div className="track-inner original" style={{ width: `${row.original * 10}%` }} />
+              <div className="track-inner revised" style={{ width: `${row.revised * 10}%` }} />
             </div>
-          </article>
+          </div>
         ))}
       </div>
     </div>

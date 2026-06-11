@@ -1,7 +1,6 @@
-import {
-  Scale,
-} from 'lucide-react';
+import { LayersIcon } from '@radix-ui/react-icons';
 import { FormEvent, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { streamTrial, TrialApiError, type TrialStreamEvent } from './api';
 import { InputPanel } from './components/InputPanel';
@@ -11,6 +10,18 @@ import { areTrialRequestsEqual, normalizeTrialRequest, trialFlowStages, type Tri
 import type { TrialRequest, TrialResponse } from './types';
 
 const initialForm = examples[0].payload;
+
+function updateLayout(callback: () => void): Promise<void> {
+  if (typeof document !== 'undefined' && document.startViewTransition) {
+    const transition = document.startViewTransition(() => {
+      flushSync(callback);
+    });
+    return transition.finished.catch(() => {});
+  } else {
+    flushSync(callback);
+    return Promise.resolve();
+  }
+}
 
 function App() {
   const [form, setForm] = useState<TrialRequest>(initialForm);
@@ -35,9 +46,8 @@ function App() {
   const hasAnalysisSurface = isLoading || Boolean(result);
   const isInputCollapsed = hasAnalysisSurface && !isInputExpanded;
   const workspaceClassName = [
-    'workspace',
-    hasAnalysisSurface ? 'workspace-has-results' : 'workspace-intake',
-    hasAnalysisSurface ? (isInputCollapsed ? 'workspace-result-focus' : 'workspace-input-focus') : null,
+    'holo-workspace',
+    hasAnalysisSurface ? 'holo-has-results' : 'holo-intake',
   ]
     .filter(Boolean)
     .join(' ');
@@ -49,16 +59,20 @@ function App() {
     abortRef.current = abortController;
     const requestId = analysisState.requestId + 1;
 
-    setIsLoading(true);
-    setIsInputExpanded(false);
-    setError(null);
-    setStreamText('');
-    setAnalysisState({
-      requestId,
-      status: 'running',
-      stageIndex: 0,
-      startedAt: Date.now(),
-    });
+    const startTrial = () => {
+      setIsLoading(true);
+      setIsInputExpanded(false);
+      setError(null);
+      setStreamText('');
+      setAnalysisState({
+        requestId,
+        status: 'running',
+        stageIndex: 0,
+        startedAt: Date.now(),
+      });
+    };
+    
+    await updateLayout(startTrial);
 
     try {
       const nextResult = await streamTrial(
@@ -78,8 +92,10 @@ function App() {
         const message =
           caughtError instanceof TrialApiError ? caughtError.message : '审判请求失败，请检查后端服务是否运行。';
         setError(message);
-        setIsInputExpanded(true);
-        setAnalysisState((current) => (current.requestId === requestId ? { ...current, status: 'idle' } : current));
+        await updateLayout(() => {
+          setIsInputExpanded(true);
+          setAnalysisState((current) => (current.requestId === requestId ? { ...current, status: 'idle' } : current));
+        });
       }
     } finally {
       if (abortRef.current === abortController) {
@@ -120,16 +136,11 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="court-header">
-        <div className="court-header-copy">
-          <p className="overline">CopyCourt</p>
-          <h1>文案审判庭</h1>
-          <p className="court-header-note">从问题识别到改写复审，完整呈现文案优化依据。</p>
-        </div>
-        <div className="status-strip" aria-label="当前模式">
-          <Scale aria-hidden="true" size={18} />
-          <span>文案分析工作台</span>
+    <main className="holo-app-shell">
+      <header className="holo-court-header">
+        <div className="holo-header-brand">
+          <LayersIcon className="holo-brand-icon" width={24} height={24} />
+          <h1>CopyCourt <span className="holo-version">OS v2.0</span></h1>
         </div>
       </header>
 
@@ -143,11 +154,13 @@ function App() {
           hasStaleDraft={hasStaleDraft}
           isCollapsed={isInputCollapsed}
           isLoading={isLoading}
-          onExpand={() => setIsInputExpanded(true)}
+          onExpand={() => updateLayout(() => setIsInputExpanded(true))}
           onExampleSelect={(payload) => {
-            setForm(payload);
-            setError(null);
-            setIsInputExpanded(true);
+            updateLayout(() => {
+              setForm(payload);
+              setError(null);
+              setIsInputExpanded(true);
+            });
           }}
           onFieldChange={handleFieldChange}
           onSubmit={handleSubmit}

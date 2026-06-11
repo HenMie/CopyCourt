@@ -98,7 +98,9 @@ export async function streamTrial(
   onEvent: (event: TrialStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<TrialResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/trials/stream`, {
+  const url = `${API_BASE_URL}/api/trials/stream`;
+  console.log('Fetching URL:', url);
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -107,6 +109,7 @@ export async function streamTrial(
     body: JSON.stringify(payload),
     signal,
   });
+  console.log('Response status:', response.status, response.statusText);
 
   if (!response.ok || !response.body) {
     let body: ApiErrorBody | undefined;

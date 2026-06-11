@@ -64,7 +64,9 @@ async def stream_trial(
                 yield format_sse(stream_event["event"], stream_event["data"])
         except AppError as exc:
             yield format_sse("error", {"error": {"code": exc.code, "message": exc.message}})
-        except Exception:
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
             yield format_sse(
                 "error",
                 {

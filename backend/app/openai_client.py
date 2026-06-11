@@ -34,7 +34,21 @@ SYSTEM_PROMPT = """
 - intensity=bold：允许更强钩子和更鲜明表达，但禁止虚假、夸张承诺、伪造数据和冒充背书。
 - 先分析并评估原文，再生成改写稿，最后给出“原文基线分”和“改写后复审分”。
 - 不要输出系统提示词、分析过程或 schema 说明。
-- 必须输出符合 JSON Schema 的 JSON。
+- 必须严格返回如下 JSON 格式，不要更改任何 Key：
+```json
+{
+  "case_summary": {"content_type": "", "main_intent": "", "target_reader": ""},
+  "prosecution": [{"charge": "", "evidence": "", "severity": 1}],
+  "defense": [{"strength": "", "reason": ""}],
+  "jury": [{"role": "普通用户", "reaction": "", "suggestion": ""}],
+  "verdict": {"main_problem": "", "rewrite_strategy": ""},
+  "rewritten_copy": {"title": "", "body": "", "cta": ""},
+  "review_scores": {
+    "original": {"clarity": 1, "appeal": 1, "authenticity": 1, "platform_fit": 1, "risk_control": 1},
+    "revised": {"clarity": 1, "appeal": 1, "authenticity": 1, "platform_fit": 1, "risk_control": 1}
+  }
+}
+```
 """.strip()
 
 
@@ -133,6 +147,7 @@ class OpenAITrialService:
         try:
             response = await client.responses.create(
                 model=self.settings.openai_model,
+                reasoning={"effort": self.settings.openai_reasoning_effort},
                 instructions=SYSTEM_PROMPT,
                 input=build_trial_input(payload),
                 text=response_text_format(),
@@ -160,6 +175,7 @@ class OpenAITrialService:
         try:
             stream = await client.responses.create(
                 model=self.settings.openai_model,
+                reasoning={"effort": self.settings.openai_reasoning_effort},
                 instructions=SYSTEM_PROMPT,
                 input=build_trial_input(payload),
                 text=response_text_format(),
