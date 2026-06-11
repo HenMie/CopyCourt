@@ -83,6 +83,16 @@ def response_text_format() -> dict[str, Any]:
     }
 
 
+def should_use_response_format(model: str) -> bool:
+    model_lower = model.lower()
+    if "reasoner" in model_lower:
+        return False
+    if "o1-mini" in model_lower or "o1-preview" in model_lower:
+        return False
+    return True
+
+
+
 def build_trial_input(payload: TrialRequest) -> str:
     audience = payload.audience.strip() if payload.audience else "未指定，请从原文合理推断"
     return (
@@ -146,8 +156,9 @@ class OpenAITrialService:
                 "model": self.settings.openai_model,
                 "instructions": SYSTEM_PROMPT,
                 "input": build_trial_input(payload),
-                "text": response_text_format(),
             }
+            if should_use_response_format(self.settings.openai_model):
+                kwargs["text"] = response_text_format()
             if self.settings.openai_reasoning_effort:
                 kwargs["reasoning"] = {"effort": self.settings.openai_reasoning_effort}
 
@@ -177,9 +188,10 @@ class OpenAITrialService:
                 "model": self.settings.openai_model,
                 "instructions": SYSTEM_PROMPT,
                 "input": build_trial_input(payload),
-                "text": response_text_format(),
                 "stream": True,
             }
+            if should_use_response_format(self.settings.openai_model):
+                kwargs["text"] = response_text_format()
             if self.settings.openai_reasoning_effort:
                 kwargs["reasoning"] = {"effort": self.settings.openai_reasoning_effort}
 
